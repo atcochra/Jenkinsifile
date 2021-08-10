@@ -9,16 +9,16 @@ pipeline {
     agent any
     stages {
         
-        stage('Rebuild Gran Packages Clean'){
+        stage('Rebuild and Check Cohort'){
             steps{
-                 build job: 'Rebuild_GRAN_Packages_Clean', parameters: [string(name: 'PACKAGES_FILE', value: "$PACKAGES_FILE"), text(name: 'PACKAGES', value: ''), string(name: 'RELEASE', value: 'uat')]
+                 build job: 'Rebuild_and_Check', parameters: [string(name: 'PACKAGES_FILE', value: "$PACKAGES_FILE"), text(name: 'PACKAGES', value: ''), string(name: 'RELEASE', value: 'uat')]
                 }
         }
      
         stage('Find Deployable Cohort') { 
             steps{
                 build job: 'Find_Deployable_Cohort', parameters: [string(name: 'FROM_MODULE', value: 'R/uat'), string(name: 'TO_MODULE', value: 'R/prd'), string(name: 'PACKAGES_FILE', value: "$PACKAGES_FILE")]
-                load "/gstore/apps/R/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/injected_variables.properties"
+                load "/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/injected_variables.properties"
                 script {
                     FDC_RESULT_1 = "${FDC_OUTPUT}"
                     if ("${FDC_CHANGED}" != "") {CHANGED_PKGS = "${FDC_CHANGED}"} else {CHANGED_PKGS = "No changed packages to release"}
@@ -37,9 +37,9 @@ pipeline {
             when {expression {FDC_RESULT_1 != "All packages passed"}}
             steps{
                 echo "Failed packages on Find Deployable Cohort - Rebuilding and Retrying the following packages: $FDC_RESULT_1"
-                build job: 'Rebuild_GRAN_Packages', parameters: [string(name: 'PACKAGES_FILE', value: '/gstore/apps/R/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/fdc_failed_pkgs.txt'), text(name: 'PACKAGES', value: ''), string(name: 'RELEASE', value: 'uat')]
+                build job: 'Rebuild_GRAN_Packages', parameters: [string(name: 'PACKAGES_FILE', value: '/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/fdc_failed_pkgs.txt'), text(name: 'PACKAGES', value: ''), string(name: 'RELEASE', value: 'uat')]
                 build job: 'Find_Deployable_Cohort', parameters: [string(name: 'FROM_MODULE', value: 'R/uat'), string(name: 'TO_MODULE', value: 'R/prd'), string(name: 'PACKAGES_FILE', value: "$PACKAGES_FILE")]
-                load "/gstore/apps/R/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/injected_variables.properties"
+                load "/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/injected_variables.properties"
                 script {
                     FDC_RESULT_2 = "${FDC_OUTPUT}"
                     if ("${FDC_CHANGED}" != ""){
@@ -80,10 +80,10 @@ pipeline {
             }
             steps{
                 echo "Changed Packages to be released to R/prd: $CHANGED_PKGS"
-                build job: 'Release_Packages', parameters: [string(name: 'FROM_MODULE', value: 'R/uat'), string(name: 'TO_MODULE', value: 'R/prd'), text(name: 'TO_INSTALL', value: ''), string(name: 'PACKAGES_FILE', value: '/gstore/apps/R/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/changed_pkgs.txt'), string(name: 'EXCLUSION_PATH', value: '/gstore/home/resgran/cedar_workspace/exclude_from_prd')]
+                build job: 'Release_Packages', parameters: [string(name: 'FROM_MODULE', value: 'R/uat'), string(name: 'TO_MODULE', value: 'R/prd'), text(name: 'TO_INSTALL', value: ''), string(name: 'PACKAGES_FILE', value: '/jenkins/jenkins-home/workspace/Find_Deployable_Cohort/changed_pkgs.txt'), string(name: 'EXCLUSION_PATH', value: '/foo/exclude_from_prd')]
                 
                 // The following lines are to account for any packages excluded from the release to production
-                load "/gstore/apps/R/jenkins/jenkins-home/workspace/Release_Packages/released_packages.txt"
+                load "/jenkins/jenkins-home/workspace/Release_Packages/released_packages.txt"
                 script{
                     if ("${RELEASED_PKGS}" != "") {RELEASED = "${RELEASED_PKGS}"} else {RELEASED = "No changed packages to release"}
                     NOT_RELEASED = "${FAILED_PKGS}"
